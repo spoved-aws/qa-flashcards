@@ -1,0 +1,71 @@
+---
+# PersistentVolumeClaim — stores the SQLite DB file
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qa-flashcards-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: qa-flashcards
+  labels:
+    app: qa-flashcards
+spec:
+  replicas: 1          # Keep at 1 — SQLite only supports one writer at a time
+  selector:
+    matchLabels:
+      app: qa-flashcards
+  template:
+    metadata:
+      labels:
+        app: qa-flashcards
+    spec:
+      containers:
+        - name: qa-flashcards
+          image: qa-flashcards:latest   # Replace with your registry image
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_PATH
+              value: /data/cards.db
+            - name: PORT
+              value: "3000"
+          volumeMounts:
+            - name: data
+              mountPath: /data          # SQLite file lives here
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: qa-flashcards-pvc
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: qa-flashcards
+spec:
+  selector:
+    app: qa-flashcards
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP          # Change to LoadBalancer or add an Ingress to expose externally

@@ -1,0 +1,47 @@
+name: Build & Push qa-flashcards
+
+on:
+  push:
+    branches: 
+      - main
+    paths:
+      - 'public/*'
+      - 'server/*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1 Checkout the repo
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2 Checkout main branch local
+      - name: Ensure local branch
+        run: |
+          git checkout -B main
+
+      # 3 Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 3 Get short git SHA
+      - name: Get git SHA short
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      # 4 Build and push image
+      - name: Build and Publish Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          no-cache: true 
+          tags: |
+            kanukhosla10/qa-flashcards:latest
+            kanukhosla10/qa-flashcards:sha-${{ env.sha_short  }}

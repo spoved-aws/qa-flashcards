@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Q&A Flashcard Deck</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #ffffff;
+      --bg2:      #f5f5f0;
+      --bg3:      #eeede8;
+      --tx:       #1a1a1a;
+      --tx2:      #6b6b67;
+      --tx3:      #9b9b97;
+      --info-tx:  #185fa5;
+      --info-bg:  #e6f1fb;
+      --border:   rgba(0,0,0,0.12);
+      --border2:  rgba(0,0,0,0.22);
+      --danger:   #d73a3a;
+      --r-md:     8px;
+      --r-lg:     12px;
+      --font:     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:      #1e1e1c; --bg2: #2a2a28; --bg3: #323230;
+        --tx:      #f0f0ec; --tx2: #a0a09c; --tx3: #6a6a66;
+        --info-tx: #85b7eb; --info-bg: #0c2e4a;
+        --border:  rgba(255,255,255,0.1); --border2: rgba(255,255,255,0.18);
+      }
+    }
+
+    body { font-family: var(--font); background: var(--bg); color: var(--tx); min-height: 100vh; padding: 2rem 1rem; }
+    .container { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 1.5rem; }
+
+    .toolbar { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+    .toolbar input[type="search"] { flex: 1; min-width: 160px; }
+
+    input, textarea, select {
+      font-family: var(--font); font-size: 14px; padding: 0 12px; height: 36px;
+      border: 0.5px solid var(--border2); border-radius: var(--r-md);
+      background: var(--bg); color: var(--tx); outline: none; transition: border-color .15s;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--tx2); box-shadow: 0 0 0 2px rgba(100,100,100,.12); }
+    textarea { height: auto; padding: 8px 12px; resize: vertical; min-height: 64px; }
+    select { cursor: pointer; }
+
+    button {
+      font-family: var(--font); font-size: 13px; padding: 6px 14px; height: 36px;
+      border: 0.5px solid var(--border2); border-radius: var(--r-md);
+      background: transparent; color: var(--tx); cursor: pointer;
+      transition: background .15s, transform .1s; white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 5px;
+    }
+    button:hover { background: var(--bg2); }
+    button:active { transform: scale(.98); }
+    button.danger { color: var(--danger); border-color: var(--danger); }
+    button.danger:hover { background: #fef0f0; }
+    button.primary { background: var(--tx); color: var(--bg); border-color: var(--tx); }
+    button.primary:hover { opacity: .85; }
+
+    .meta-bar { font-size: 13px; color: var(--tx2); margin-bottom: 1rem; display: flex; align-items: center; gap: 12px; }
+    .spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--tx2); border-radius: 50%; animation: spin .6s linear infinite; display: none; }
+    .spinner.active { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .cat-block { margin-bottom: 1rem; border: 0.5px solid var(--border); border-radius: var(--r-lg); overflow: hidden; }
+    .cat-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; background: var(--bg2); user-select: none; }
+    .cat-header:hover { background: var(--bg3); }
+    .cat-left { display: flex; align-items: center; gap: 10px; }
+    .cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .cat-name { font-size: 15px; font-weight: 500; }
+    .cat-count { font-size: 12px; color: var(--tx2); background: var(--bg); border: 0.5px solid var(--border); padding: 2px 8px; border-radius: 999px; }
+    .cat-right { display: flex; align-items: center; gap: 8px; }
+    .cat-chevron { font-size: 16px; color: var(--tx2); transition: transform .2s; }
+    .cat-chevron.open { transform: rotate(180deg); }
+    .del-cat { font-size: 12px; padding: 2px 8px; height: auto; color: var(--tx3); border-color: transparent; }
+    .del-cat:hover { color: var(--danger); border-color: var(--danger); background: transparent; }
+
+    .qa-list { display: none; border-top: 0.5px solid var(--border); }
+    .qa-list.open { display: block; }
+    .qa-item { border-bottom: 0.5px solid var(--border); }
+    .qa-item:last-child { border-bottom: none; }
+
+    .qa-question { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 12px 16px; }
+    .qa-question:hover { background: var(--bg2); }
+    .q-text { font-size: 14px; flex: 1; line-height: 1.5; cursor: pointer; }
+    .q-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+    .reveal-btn { font-size: 11px; height: auto; padding: 3px 10px; border-radius: 999px; }
+    .reveal-btn.shown { background: var(--info-bg); color: var(--info-tx); border-color: transparent; }
+    .icon-btn { font-size: 14px; padding: 3px 7px; height: auto; border-color: transparent; color: var(--tx3); }
+    .icon-btn:hover { color: var(--tx); border-color: var(--border2); background: transparent; }
+    .icon-btn.del:hover { color: var(--danger); border-color: var(--danger); }
+
+    .qa-answer { display: none; padding: 0 16px 14px; font-size: 14px; color: var(--tx2); line-height: 1.65; border-top: 0.5px dashed var(--border); background: var(--bg2); }
+    .qa-answer.shown { display: block; }
+
+    .edit-form { display: grid; gap: 8px; padding: 12px 16px; background: var(--bg2); border-top: 0.5px solid var(--border); }
+    .edit-form input, .edit-form textarea { width: 100%; }
+    .edit-form .row { display: flex; gap: 8px; }
+
+    .empty { text-align: center; padding: 2rem; color: var(--tx3); font-size: 14px; }
+
+    .add-area { border: 0.5px dashed var(--border2); border-radius: var(--r-lg); padding: 1rem 1.25rem; margin-top: 1.5rem; }
+    .add-area summary { font-size: 14px; font-weight: 500; color: var(--tx2); cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+    .add-area summary::-webkit-details-marker { display: none; }
+    .add-form { display: grid; gap: 8px; margin-top: 12px; }
+    .add-form input, .add-form textarea, .add-form select { width: 100%; }
+    .add-form .row { display: flex; gap: 8px; }
+    .add-form .row > * { flex: 1; }
+
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--tx); color: var(--bg); font-size: 13px; padding: 10px 16px; border-radius: var(--r-md); opacity: 0; transition: opacity .2s; pointer-events: none; }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Q&amp;A Flashcard Deck</h1>
+
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search questions…" oninput="renderDeck()">
+    <select id="filter" onchange="renderDeck()">
+      <option value="">All categories</option>
+    </select>
+    <button onclick="toggleAll(true)"><i class="ti ti-chevrons-down"></i> Expand all</button>
+    <button onclick="toggleAll(false)"><i class="ti ti-chevrons-up"></i> Collapse all</button>
+  </div>
+
+  <div class="meta-bar">
+    <span id="meta"></span>
+    <span class="spinner" id="spinner"></span>
+  </div>
+
+  <div id="deck"></div>
+
+  <details class="add-area" id="add-area">
+    <summary><i class="ti ti-plus"></i> Add a card</summary>
+    <div class="add-form">
+      <div class="row">
+        <input type="text" id="new-q" placeholder="Question">
+        <select id="new-cat-sel"><option value="">— Pick category —</option></select>
+      </div>
+      <div class="row">
+        <input type="text" id="new-cat-name" placeholder="Or create new category name">
+        <input type="color" id="new-cat-color" value="#7F77DD" title="Category color" style="width:48px;padding:2px 4px;cursor:pointer;">
+      </div>
+      <textarea id="new-a" placeholder="Answer"></textarea>
+      <button class="primary" onclick="addCard()"><i class="ti ti-check"></i> Add card</button>
+    </div>
+  </details>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let allData  = [];   // [{id, name, color, cards:[…]}]
+  let catOpen  = {};
+  let shown    = new Set();
+  let editing  = null; // card id being edited
+
+  // ── API helpers ─────────────────────────────────────────────────────────────
+  async function api(method, path, body) {
+    setLoading(true);
+    try {
+      const res = await fetch(path, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadData() {
+    allData = await api('GET', '/api/cards');
+    syncSelects();
+    renderDeck();
+  }
+
+  // ── UI state ─────────────────────────────────────────────────────────────────
+  function setLoading(on) {
+    document.getElementById('spinner').classList.toggle('active', on);
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  function syncSelects() {
+    const sel = document.getElementById('new-cat-sel');
+    const filterSel = document.getElementById('filter');
+    const filterVal = filterSel.value;
+    while (sel.options.length > 1) sel.remove(1);
+    while (filterSel.options.length > 1) filterSel.remove(1);
+    allData.forEach(cat => {
+      [sel, filterSel].forEach(s => {
+        const o = document.createElement('option');
+        o.value = cat.id; o.textContent = cat.name;
+        s.appendChild(o);
+      });
+    });
+    filterSel.value = filterVal;
+  }
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+  function renderDeck() {
+    const q  = document.getElementById('search').value.toLowerCase();
+    const fc = document.getElementById('filter').value;
+
+    const filtered = allData
+      .map(cat => ({
+        ...cat,
+        cards: cat.cards.filter(c =>
+          (!fc || String(cat.id) === fc) &&
+          (!q || c.question.toLowerCase().includes(q) || c.answer.toLowerCase().includes(q))
+        ),
+      }))
+      .filter(cat => (!fc || String(cat.id) === fc) && cat.cards.length > 0);
+
+    const total = filtered.reduce((s, c) => s + c.cards.length, 0);
+    document.getElementById('meta').textContent =
+      `${total} card${total !== 1 ? 's' : ''} in ${filtered.length} categor${filtered.length !== 1 ? 'ies' : 'y'}`;
+
+    const deck = document.getElementById('deck');
+    if (!total) { deck.innerHTML = '<div class="empty">No cards match your search.</div>'; return; }
+
+    deck.innerHTML = filtered.map(cat => {
+      const open = catOpen[cat.id] !== false;
+      return `<div class="cat-block">
+        <div class="cat-header" onclick="toggleCat(${cat.id})">
+          <div class="cat-left">
+            <span class="cat-dot" style="background:${cat.color}"></span>
+            <span class="cat-name">${esc(cat.name)}</span>
+            <span class="cat-count">${cat.cards.length}</span>
+          </div>
+          <div class="cat-right">
+            <button class="del-cat icon-btn del" title="Delete category" onclick="deleteCat(event,${cat.id})">
+              <i class="ti ti-trash"></i>
+            </button>
+            <i class="ti ti-chevron-down cat-chevron ${open ? 'open' : ''}"></i>
+          </div>
+        </div>
+        <div class="qa-list ${open ? 'open' : ''}">
+          ${cat.cards.map(c => renderCard(c)).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderCard(c) {
+    const isShown   = shown.has(c.id);
+    const isEditing = editing === c.id;
+    return `<div class="qa-item" id="card-${c.id}">
+      <div class="qa-question">
+        <span class="q-text" onclick="toggleAnswer(${c.id})">${esc(c.question)}</span>
+        <div class="q-actions">
+          <button class="reveal-btn ${isShown ? 'shown' : ''}" onclick="toggleAnswer(${c.id})">
+            ${isShown ? 'Hide' : 'Show answer'}
+          </button>
+          <button class="icon-btn" title="Edit" onclick="startEdit(${c.id})">
+            <i class="ti ti-pencil"></i>
+          </button>
+          <button class="icon-btn del" title="Delete" onclick="deleteCard(${c.id})">
+            <i class="ti ti-trash"></i>
+          </button>
+        </div>
+      </div>
+      ${isEditing ? `
+        <div class="edit-form">
+          <input type="text" id="eq-${c.id}" value="${esc(c.question)}">
+          <textarea id="ea-${c.id}">${esc(c.answer)}</textarea>
+          <div class="row">
+            <button class="primary" onclick="saveEdit(${c.id})"><i class="ti ti-check"></i> Save</button>
+            <button onclick="cancelEdit()">Cancel</button>
+          </div>
+        </div>
+      ` : `
+        <div class="qa-answer ${isShown ? 'shown' : ''}"><p>${esc(c.answer)}</p></div>
+      `}
+    </div>`;
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── Interactions ─────────────────────────────────────────────────────────────
+  function toggleAnswer(id) { shown.has(id) ? shown.delete(id) : shown.add(id); renderDeck(); }
+  function toggleCat(id)    { catOpen[id] = catOpen[id] !== false ? false : true; renderDeck(); }
+  function toggleAll(open)  { allData.forEach(c => catOpen[c.id] = open); renderDeck(); }
+
+  function startEdit(id)  { editing = id; renderDeck(); }
+  function cancelEdit()   { editing = null; renderDeck(); }
+
+  async function saveEdit(id) {
+    const q = document.getElementById(`eq-${id}`).value.trim();
+    const a = document.getElementById(`ea-${id}`).value.trim();
+    if (!q || !a) return alert('Question and answer cannot be empty.');
+    const updated = await api('PUT', `/api/cards/${id}`, { question: q, answer: a });
+    allData = allData.map(cat => ({
+      ...cat,
+      cards: cat.cards.map(c => c.id === id ? { ...c, ...updated } : c),
+    }));
+    editing = null;
+    toast('Card updated');
+    renderDeck();
+  }
+
+  async function deleteCard(id) {
+    if (!confirm('Delete this card?')) return;
+    await api('DELETE', `/api/cards/${id}`);
+    allData = allData.map(cat => ({ ...cat, cards: cat.cards.filter(c => c.id !== id) }));
+    shown.delete(id);
+    toast('Card deleted');
+    renderDeck();
+  }
+
+  async function deleteCat(e, id) {
+    e.stopPropagation();
+    const cat = allData.find(c => c.id === id);
+    if (!confirm(`Delete category "${cat.name}" and all its cards?`)) return;
+    await api('DELETE', `/api/categories/${id}`);
+    allData = allData.filter(c => c.id !== id);
+    toast('Category deleted');
+    syncSelects();
+    renderDeck();
+  }
+
+  async function addCard() {
+    const question  = document.getElementById('new-q').value.trim();
+    const answer    = document.getElementById('new-a').value.trim();
+    const selCatId  = document.getElementById('new-cat-sel').value;
+    const newName   = document.getElementById('new-cat-name').value.trim();
+    const newColor  = document.getElementById('new-cat-color').value;
+
+    if (!question || !answer) return alert('Please fill in a question and answer.');
+
+    let category_id = selCatId ? Number(selCatId) : null;
+
+    // Create new category if typed
+    if (newName) {
+      const newCat = await api('POST', '/api/categories', { name: newName, color: newColor });
+      allData.push({ ...newCat, cards: [] });
+      category_id = newCat.id;
+      syncSelects();
+    }
+
+    if (!category_id) return alert('Please pick or create a category.');
+
+    const card = await api('POST', '/api/cards', { category_id, question, answer });
+    allData = allData.map(cat =>
+      cat.id === category_id ? { ...cat, cards: [...cat.cards, card] } : cat
+    );
+
+    // Clear form
+    document.getElementById('new-q').value = '';
+    document.getElementById('new-a').value = '';
+    document.getElementById('new-cat-name').value = '';
+    document.getElementById('new-cat-sel').value = '';
+    document.getElementById('add-area').removeAttribute('open');
+
+    toast('Card added');
+    renderDeck();
+  }
+
+  // Boot
+  loadData();
+</script>
+</body>
+</html>

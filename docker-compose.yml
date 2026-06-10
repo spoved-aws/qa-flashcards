@@ -1,0 +1,14 @@
+services:
+  qa-flashcards:
+    build: .
+    ports:
+      - "8080:3000"
+    volumes:
+      - qa-data:/data        # SQLite DB persists here across restarts
+    restart: unless-stopped
+    environment:
+      DB_PATH: /data/cards.db
+      PORT: 3000
+
+volumes:
+  qa-data:                   # Docker-managed named volume
